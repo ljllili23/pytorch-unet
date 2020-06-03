@@ -300,3 +300,12 @@ optimizer_ft = optim.Adam(model.parameters(), lr=1e-4)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=25, gamma=0.1)
 
 model = train_model(model, optimizer_ft, exp_lr_scheduler, num_epochs=40)
+
+
+###############
+# save the model
+model_path = "./model/"
+if not os.path.exists(model_path):
+    os.mkdir(model_path)
+torch.save(model.state_dict(),os.path.join(model_path,"model_{0}.pth".format(time.time())))
+print("model file saved!")
