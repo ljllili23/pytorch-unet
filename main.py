@@ -80,7 +80,7 @@ summary(model, input_size=(3, 224, 224))
 # val_set = SimDataset(200, transform=trans)
 
 TRAIN_PATH = "../OLDS/data/dsb2018_96/"
-TEST_PATH = "../OLDS/data/tset_dataset/"
+
 # TEST_PATH = './stage1_test/'
 
 # train_files = next(os.walk(TRAIN_PATH))[1]
@@ -93,16 +93,10 @@ for dir in os.listdir(os.path.join(TRAIN_PATH,"images/")):
 
 print("the size of train_files: {}.",len(train_files))
 
-test_files = []
-for dir in os.listdir(os.path.join(TEST_PATH, "images/")):
-    dir = dir.split('.')
-    test_files.append(dir[0])
-print("the size of test_files: {}.",len(test_files))
 
 X_train = np.zeros((len(train_files), 224, 224, 3), dtype = np.uint8)
 Y_train = np.zeros((len(train_files), 224, 224, 1), dtype = np.bool)
-X_test = np.zeros((len(test_files), 224, 224, 3), dtype=np.uint8)
-Y_test = np.zeros((len(train_files), 224, 224, 1), dtype=np.bool)
+
 ###############################################
 # get the data arrays for training;
 
@@ -119,22 +113,6 @@ for n, id_ in tqdm(enumerate(train_files), total=len(train_files)):
     mask = resize(mask, (224, 224, 1), mode='constant', preserve_range=True)
     Y_train[n] = mask
 
-
-print('Getting testing data for stage 1...')
-sys.stdout.flush()
-
-sizes_test = []
-for n, id_ in tqdm(enumerate(test_files), total=len(test_files)):
-    img_path = TEST_PATH + '/images/' + id_ + '.png'
-    img = imread(img_path)[:, :, :3]
-    img = resize(img, (224, 224), mode='constant', preserve_range=True)
-    img.shape
-    X_test[n] = img
-
-    masks_path = TEST_PATH + '/masks/' + id_ + '.png'
-    mask = imread(masks_path)[:, :, :3]
-    mask = resize(mask, (224, 224, 1), mode='constant', preserve_range=True)
-    Y_test[n] = mask
 
 ############################################
 
