@@ -79,7 +79,7 @@ summary(model, input_size=(3, 224, 224))
 # train_set = SimDataset(2000, transform=trans)
 # val_set = SimDataset(200, transform=trans)
 
-TRAIN_PATH = "../OLDS/data/dsb2018_96/"
+TRAIN_PATH = "../data/"
 
 # TEST_PATH = './stage1_test/'
 
@@ -87,7 +87,7 @@ TRAIN_PATH = "../OLDS/data/dsb2018_96/"
 # test_files = next(os.walk(TEST_PATH))[1]
 
 train_files = []
-for dir in os.listdir(os.path.join(TRAIN_PATH,"images/")):
+for dir in os.listdir(os.path.join(TRAIN_PATH,"aug_image/")):
     dir = dir.split('.')
     train_files.append(dir[0])
 
@@ -103,12 +103,12 @@ Y_train = np.zeros((len(train_files), 224, 224, 1), dtype = np.bool)
 print('Getting training data...')
 sys.stdout.flush()
 for n, id_ in tqdm(enumerate(train_files), total=len(train_files)):
-    img_path = TRAIN_PATH + '/images/' + id_ + '.png'
+    img_path = TRAIN_PATH + '/aug_image/' + id_ + '.png'
     img = imread(img_path)[:, :, :3]
     img = resize(img, (224, 224, 3), mode='constant', preserve_range=True)
     X_train[n] = img
 
-    masks_path = TRAIN_PATH + '/masks/' + id_ + '.png'
+    masks_path = TRAIN_PATH + '/aug_mask/' + id_ + '.png'
     mask = imread(masks_path)[:, :, :3]
     mask = resize(mask, (224, 224, 1), mode='constant', preserve_range=True)
     Y_train[n] = mask
