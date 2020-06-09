@@ -47,12 +47,24 @@ from skimage.io import imread, imshow
 from skimage.transform import resize
 seed = 42
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-model = pytorch_unet.UNet(1)
-model = model.float()
+# model = pytorch_unet.UNet(1)
+# model = model.float()
+# model = model.to(device)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
+num_class = 1
+model = pytorch_unet.UNet(num_class)
+################################
+# use multiple gpus
+if torch.cuda.device_count() > 1:
+  print("Let's use", torch.cuda.device_count(), "GPUs!")
+  # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+  model = nn.DataParallel(model)
+################################
 model = model.to(device)
-summary(model, input_size=(3, 512, 512))
+summary(model, input_size=(3, 256, 256))
 
 # class SimDataset(Dataset):
 #     def __init__(self, count, transform=None):
@@ -99,11 +111,11 @@ for dir in os.listdir(os.path.join(VAL_PATH,"aug_image/")):
     val_files.append(dir[0])
 print("the size of val_files: {}.".format(len(train_files)))
 
-X_train = np.zeros((len(train_files), 512, 512, 3), dtype = np.uint8)
-Y_train = np.zeros((len(train_files), 512, 512, 1), dtype = np.bool)
+X_train = np.zeros((len(train_files), 256, 256, 3), dtype = np.uint8)
+Y_train = np.zeros((len(train_files), 256, 256, 1), dtype = np.uint8)
 
-X_val = np.zeros((len(val_files), 512, 512, 3), dtype = np.uint8)
-Y_val = np.zeros((len(val_files), 512, 512, 1), dtype = np.bool)
+X_val = np.zeros((len(val_files), 256, 256, 3), dtype = np.uint8)
+Y_val = np.zeros((len(val_files), 256, 256, 1), dtype = np.uint8)
 
 ###############################################
 # get the data arrays for training;
@@ -113,13 +125,16 @@ sys.stdout.flush()
 for n, id_ in tqdm(enumerate(train_files), total=len(train_files)):
     img_path = TRAIN_PATH + '/aug_image/' + id_ + '.png'
     img = imread(img_path)[:, :, :3]
-    img = resize(img, (512, 512, 3), mode='constant', preserve_range=True)
+    # print(img.shape)
+    img = resize(img, (256, 256, 3), mode='constant', preserve_range=True)
     # img = img.astype('float32') / 255
     X_train[n] = img
 
     masks_path = TRAIN_PATH + '/aug_mask/' + id_ + '.png'
-    mask = imread(masks_path)[:, :, :3]
-    mask = resize(mask, (512, 512, 1), mode='constant', preserve_range=True)
+    mask = imread(masks_path)
+    # print(mask.shape)
+    mask = resize(mask, (256, 256, 1), mode='constant', preserve_range=True)
+    # print(mask.shape)
     # mask  = mask.astype('float32')/255
     Y_train[n] = mask
 
@@ -128,13 +143,14 @@ sys.stdout.flush()
 for n, id_ in tqdm(enumerate(val_files), total=len(val_files)):
     img_path = VAL_PATH + '/aug_image/' + id_ + '.png'
     img = imread(img_path)[:, :, :3]
-    img = resize(img, (512, 512, 3), mode='constant', preserve_range=True)
+    img = resize(img, (256, 256, 3), mode='constant', preserve_range=True)
     # img = img.astype('float32')/255
     X_val[n] = img
 
     masks_path = VAL_PATH + '/aug_mask/' + id_ + '.png'
-    mask = imread(masks_path)[:, :, :3]
-    mask = resize(mask, (512, 512, 1), mode='constant', preserve_range=True)
+    mask = imread(masks_path)
+    # print(mask.shape)
+    mask = resize(mask, (256, 256, 1), mode='constant', preserve_range=True)
     # mask  = mask.astype('float32')/255
     Y_val[n] = mask
 
@@ -150,7 +166,7 @@ class Nuc_Seg(Dataset):
     def transform(self, image_np, mask_np):
         ToPILImage = transforms.ToPILImage()
         image = ToPILImage(image_np)
-        mask = ToPILImage(mask_np.astype(np.int32))
+        mask = ToPILImage(mask_np)
 
         image = TF.pad(image, padding=20, padding_mode='reflect')
         mask = TF.pad(mask, padding=20, padding_mode='reflect')
@@ -165,8 +181,8 @@ class Nuc_Seg(Dataset):
         image = TF.affine(image, angle=angle, translate=translations, scale=scale, shear=shear)
         mask = TF.affine(mask, angle=angle, translate=translations, scale=scale, shear=shear)
 
-        image = TF.center_crop(image, (512, 512))
-        mask = TF.center_crop(mask, (512, 512))
+        image = TF.center_crop(image, (256, 256))
+        mask = TF.center_crop(mask, (256, 256))
 
         image = TF.to_tensor(image)
         mask = TF.to_tensor(mask)
@@ -179,14 +195,19 @@ class Nuc_Seg(Dataset):
         image_np = self.images_np[idx]
         mask_np = self.masks_np[idx]
         image, mask = self.transform(image_np, mask_np)
-        image = image.float()/255
+        image = image
         mask = mask.float()/255
+        # print(mask.mean())
         return [image, mask]
 
 
 # dataloader for train and validation
 # X_train, X_val, Y_train, Y_val = train_test_split(X_train, Y_train, test_size = 0.1, random_state = seed)
 train_set = Nuc_Seg(X_train, Y_train)
+print("######################")
+print(Y_train[0].mean())
+print(train_set.__getitem__(0)[1].mean())
+print("######################")
 # train_loader = DataLoader(train_dataset, batch_size = 16, shuffle = True)
 val_set = Nuc_Seg(X_val, Y_val)
 # valid_loader = DataLoader(valid_dataset, batch_size = 16, shuffle = True)
@@ -196,7 +217,7 @@ image_datasets = {
 }
 # your dataset for training and validation;
 
-batch_size = 16
+batch_size = 5
 
 dataloaders = {
     'train': DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=0),
@@ -210,9 +231,9 @@ dataset_sizes = {
 print(dataset_sizes)
 
 def calc_loss(pred, target, metrics, bce_weight=0.5):
-    bce = F.binary_cross_entropy_with_logits(pred, target)
-
-    pred = F.sigmoid(pred)
+    # bce = F.binary_cross_entropy_with_logits(pred, target)
+    pred = torch.sigmoid(pred)
+    bce = F.binary_cross_entropy(pred,target)
     dice = dice_loss(pred, target)
 
     loss = bce * bce_weight + dice * (1 - bce_weight)
@@ -243,7 +264,6 @@ def train_model(model, optimizer, scheduler, num_epochs=25):
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':
-                scheduler.step()
                 for param_group in optimizer.param_groups:
                     print("LR", param_group['lr'])
 
@@ -256,7 +276,7 @@ def train_model(model, optimizer, scheduler, num_epochs=25):
 
             for inputs, labels in dataloaders[phase]:
                 inputs = inputs.to(device)
-                labels = labels.to(device).float()
+                labels = labels.to(device)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -286,31 +306,21 @@ def train_model(model, optimizer, scheduler, num_epochs=25):
 
         time_elapsed = time.time() - since
         print('{:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+        scheduler.step()
     print('Best val loss: {:4f}'.format(best_loss))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
     return model
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
-num_class = 1
-model = pytorch_unet.UNet(num_class)
-################################
-# use multiple gpus
-if torch.cuda.device_count() > 1:
-  print("Let's use", torch.cuda.device_count(), "GPUs!")
-  # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-  model = nn.DataParallel(model)
-################################
-model = model.to(device)
+
 
 # Observe that all parameters are being optimized
-optimizer_ft = optim.Adam(model.parameters(), lr=1e-2)
+optimizer_ft = optim.Adam(model.parameters(), lr=1e-4)
 
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=25, gamma=0.1)
+exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=10, gamma=0.1)
 
-model = train_model(model, optimizer_ft, exp_lr_scheduler, num_epochs=100)
+model = train_model(model, optimizer_ft, exp_lr_scheduler, num_epochs=20)
 
 
 ###############

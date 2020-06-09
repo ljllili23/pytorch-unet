@@ -22,19 +22,19 @@ mask_dir = "../data/masks/"
 val_img_dir = "../data/validation/images/"
 val_mask_dir = "../data/validation/masks/"
 
-# for fn in os.listdir(image_dir):
-#     image = imageio.imread(os.path.join(image_dir,fn))
-#     mask = imageio.imread(os.path.join(mask_dir,fn.split('.')[0]+'.png'))
-#     ia.seed(13)
-#     for idx in range(100):
-#         aug_image = aug(image=image)
-#         imageio.imsave("../data/aug_image/{}_{}.png".format(fn.split('.')[0],idx), aug_image)
-#         print("../data/aug_image/{}_{}.png".format(fn,idx))
-#     ia.seed(13)
-#     for idx in range(100):
-#         aug_mask = aug(image=mask)
-#         imageio.imsave("../data/aug_mask/{}_{}.png".format(fn.split('.')[0],idx), aug_mask)
-#         print("../data/aug_mask/{}_{}.png".format(fn,idx))
+for fn in os.listdir(image_dir):
+    image = imageio.imread(os.path.join(image_dir,fn))
+    mask = imageio.imread(os.path.join(mask_dir,fn.split('.')[0]+'.png'))
+    ia.seed(13)
+    for idx in range(100):
+        aug_image = aug(image=image)
+        imageio.imsave("../data/aug_image/{}_{}.png".format(fn.split('.')[0],idx), aug_image)
+        print("../data/aug_image/{}_{}.png".format(fn,idx))
+    ia.seed(13)
+    for idx in range(100):
+        aug_mask = aug(image=mask)
+        imageio.imsave("../data/aug_mask/{}_{}.png".format(fn.split('.')[0],idx), aug_mask)
+        print("../data/aug_mask/{}_{}.png".format(fn,idx))
 
 
 for fn in os.listdir(val_img_dir):
